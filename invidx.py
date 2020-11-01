@@ -3,12 +3,13 @@ import os
 from bs4 import BeautifulSoup
 import re
 from nltk.corpus import stopwords
+import pickle
 
 def main():
 	# Command Line argument parsing
 	parser = argparse.ArgumentParser()
-	parser.add_argument("coll_path")
-	parser.add_argument("indexfile")
+	parser.add_argument("coll_path", help="directory containing the files containing documents of the collection")
+	parser.add_argument("indexfile", help="name of the generated index files")
 	args = parser.parse_args()
 
 	# Get all copus files
@@ -21,6 +22,7 @@ def main():
 	additional_stop_words = ["n't", "ll"]
 	stop_words.update(additional_stop_words)
 	inverted_indexes = {}
+	doc_norms = {}
 
 	for filename in coll:
 		file = open(filename, 'r')
@@ -86,14 +88,35 @@ def main():
 				last_tag = current_tag
 				last_term_was_tag = current_term_is_tag
 			
+			# doc_norm_sum = 0.0
+			max_doc_freq = 0
 			for term in doc_inv_ind:
 				if term in inverted_indexes:
 					inverted_indexes[term][doc_no] = doc_inv_ind[term]
 				else:
 					inverted_indexes[term] = {doc_no: doc_inv_ind[term]}
+				if max_doc_freq < doc_inv_ind[term]:
+					max_doc_freq = doc_inv_ind[term]
+				# doc_norm_sum += doc_inv_ind[term]**2
+			# doc_norms[doc_no] = doc_norm_sum ** 0.5
+			doc_norms[doc_no] = max_doc_freq
 
-	print(inverted_indexes)
+	indexfile_dict = open(args.indexfile + ".dict", "wb+")
+	indexfile_idx = open(args.indexfile + ".idx", "wb+")
 
+	index_dict = {}
+
+	pickle.dump(doc_norms, indexfile_idx, protocol=pickle.HIGHEST_PROTOCOL)
+	idx_offset = indexfile_idx.tell()
+	for term in inverted_indexes:
+		pickle.dump(inverted_indexes[term], indexfile_idx, protocol=pickle.HIGHEST_PROTOCOL)
+		index_dict[term] = (len(inverted_indexes[term]), idx_offset)
+		idx_offset = indexfile_idx.tell()
+
+	indexfile_idx.close()
+
+	pickle.dump(index_dict, indexfile_dict, protocol=pickle.HIGHEST_PROTOCOL)
+	indexfile_dict.close()
 			
 
 if __name__ == "__main__":
