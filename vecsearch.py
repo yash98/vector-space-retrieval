@@ -76,7 +76,10 @@ def main():
 	for top in top_pat.findall(query_file_text):
 		query_no = query_no_pat.findall(top)[0]
 		query = query_pat.findall(top)[0]
-		print(query_no, vec_search(query, args.cutoff))
+		relevant_docs = vec_search(query, args.cutoff)
+		for _ in range(len(relevant_docs)):
+			relevant_doc_id = heapq.heappop(relevant_docs)[1]
+			output_file.write("{} 0 {} 1\n".format(query_no, relevant_doc_id))
 	
 	index_file.close()
 	query_file.close()
